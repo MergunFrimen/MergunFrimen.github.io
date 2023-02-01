@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
+        <title>Mol* ACC2 Wrapper</title>
+        <link href="./style.css" rel="stylesheet" />
+        <script src="https://unpkg.com/molstar-partial-charges@0.0.1/dist/index.umd.js"></script>
+    </head>
+    <body>
+        <div id="controls"></div>
+        <div id="app"></div>
+        <script>
+            let charge = 0;
+
+            const polymer_structure =
+                'https://raw.githubusercontent.com/MergunFrimen/molstar-partial-charges/master/examples/3bj1.charges.cif';
+            const non_polymer_structure =
+                'https://raw.githubusercontent.com/MergunFrimen/molstar-partial-charges/master/examples/2_4_dinitrophenol.charges.cif';
+
+            const molstar = new MolstarPartialCharges();
+
+            (async () => {
+                // Initialize Mol* and load the default structure
+                await molstar.init('app');
+                await load(polymer_structure);
+            })().then(
+                () => console.log('Mol* ACC2 Wrapper initialized'),
+                (e) => console.error('Mol* ACC2 Wrapper initialization failed', e)
+            );
+
+            addHeader('Color');
+            addControl('Default\n(=Element symbol)', async () => await molstar.color.default());
+            addControl('Partial Charges', async () => await molstar.color.partialCharges());
+
+            addHeader('View');
+            addControl('Default\n(=Cartoon)', async () => await molstar.type.default(), 'controls-view-default');
+            addControl('Surface', async () => await molstar.type.surface());
+            addControl('Ball and stick', async () => await molstar.type.ballAndStick());
+
+            addHeader('Charge', 'controls-charge-header');
+            addControl('Relative', async () => {
+                charge = 0;
+                const relativeCharge = molstar.charges.getRelativeCharge();
+                updateCharge(relativeCharge);
+                await molstar.charges.relative();
+            });
+            addControl('Absolute (+0.1)', async () => {
+                charge += 0.1;
+                updateCharge(charge);
+                await molstar.charges.absolute(charge);
+            });
+            addControl('Absolute (-0.1)', async () => {
+                charge -= 0.1;
+                updateCharge(charge);
+                await molstar.charges.absolute(charge);
+            });
+
+            addHeader('Load');
+            addControl('3BJ1', async () => await load(polymer_structure));
+            addControl('2_4_dinitrophenol', async () => await load(non_polymer_structure));
+
+            async function load(url) {
+                await molstar.load(url);
+                switchOffCartoonView();
+                await molstar.color.partialCharges();
+                updateCharge(molstar.charges.getRelativeCharge());
+            }
+
+            function switchOffCartoonView() {
+                const view = document.getElementById('controls-view-default');
+                if (!molstar.type.isDefaultApplicable()) view.setAttribute('disabled', 'true');
+                else view.removeAttribute('disabled');
+            }
+
+            function updateCharge(charge) {
+                const header = document.getElementById('controls-charge-header');
+                header.innerText = `Charge (${charge.toFixed(3)})`;
+            }
+
+            function addControl(label, action, id) {
+                const btn = document.createElement('button');
+                btn.onclick = action;
+                btn.innerText = label;
+                if (id) btn.setAttribute('id', id);
+                document.getElementById('controls')?.appendChild(btn);
+            }
+
+            function addSeparator() {
+                const hr = document.createElement('hr');
+                document.getElementById('controls')?.appendChild(hr);
+            }
+
+            function addHeader(header, id) {
+                addSeparator();
+                const h = document.createElement('h3');
+                h.innerText = header;
+                if (id) h.setAttribute('id', id);
+                document.getElementById('controls')?.appendChild(h);
+            }
+        </script>
+    </body>
+</html>
